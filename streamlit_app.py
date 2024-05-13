@@ -4,6 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from skimage import io
+import torch
+from torchvision import transforms
+from torch.utils.data import Dataset, DataLoader
+import torchvision.models as models
+import numpy as np
+from PIL import Image
+#import io
+import torch.nn as nn
 
 sns.set_theme(style = "darkgrid" )
 #Lectura de la Imagen
@@ -19,10 +27,10 @@ alexnet = io.imread("./Pictures/alexnet.jpg")
 plots = {"Artistas":(plot_art, alexnet),"Generos":(plot_gen, resnet),"Estilos":(plot_sty, vgg)}
 all_labels = {
     "artist":[
-        "boris-kustodiev",
+        "claude-monet",
         "camille-pissarro",
         "childe-hassam",
-        "claude-monet",
+        "boris-kustodiev",
         "edgar-degas",
         "eugene-boudin",
         "gustave-dore",
@@ -32,16 +40,16 @@ all_labels = {
         "john-singer-sargent",
         "marc-chagall",
         "martiros-saryan",
-        "nicholas-roerich",
         "pablo-picasso",
+        "nicholas-roerich",
         "paul-cezanne",
         "pierre-auguste-renoir",
         "pyotr-konchalovsky",
         "raphael-kirchner",
         "rembrandt",
         "salvador-dali",
-        "vincent-van-gogh",
         "hieronymus-bosch",
+        "vincent-van-gogh",
         "leonardo-da-vinci",
         "albrecht-durer",
         "edouard-cortes",
@@ -70,7 +78,7 @@ all_labels = {
         "joaquadn-sorolla",
         "jacek-malczewski",
         "berthe-morisot",
-        "andy-warhol",
+        "claude-monet",
         "arkhip-kuindzhi",
         "niko-pirosmani",
         "james-tissot",
@@ -191,6 +199,78 @@ all_labels = {
       ]
   }
 # Header
+
+
+class CustomAlexNet(nn.Module):
+    def __init__(self, num_classes):
+        super(CustomAlexNet, self).__init__()
+        self.alexnet = models.alexnet(pretrained=True)
+        # Freeze the features layers
+        for param in self.alexnet.features.parameters():
+            param.requires_grad = False
+        # Replace the classifier layer
+        num_features = self.alexnet.classifier[6].in_features
+        self.alexnet.classifier[6] = nn.Linear(num_features, num_classes)
+
+    def forward(self, x):
+        return self.alexnet(x)
+
+class CustomResNet18(nn.Module):
+    def __init__(self, num_classes):
+        super(CustomResNet18, self).__init__()
+        self.resnet18 = models.resnet18(pretrained=True)
+        num_features = self.resnet18.fc.in_features
+        self.resnet18.fc = nn.Linear(num_features, num_classes)
+
+    def forward(self, x):
+        x = self.resnet18(x)
+        return x
+
+class VGGClassifier(nn.Module):
+    def __init__(self, num_classes):
+        super(VGGClassifier, self).__init__()
+        self.vgg = models.vgg16(pretrained=True)
+
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+
+        num_features = self.vgg.classifier[6].in_features
+        self.vgg.classifier[6] = nn.Linear(num_features, num_classes)
+
+    def forward(self, x):
+        return self.vgg(x)
+
+num_artist_classes = 129
+num_genre_classes = 10
+num_style_classes = 27
+
+model_artist = CustomAlexNet(num_artist_classes)
+model_genre = CustomResNet18(num_genre_classes)
+model_style = VGGClassifier(num_style_classes)
+model_artist.load_state_dict(torch.load('best_model_artist.pth'))
+model_genre.load_state_dict(torch.load('best_model_genre.pth'))
+model_style.load_state_dict(torch.load('best_model_style.pth'))
+
+def predict_label(image, model):
+    # Define the transformation to be applied to the image
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),  # Resize the image
+        transforms.ToTensor(),           # Convert the image to a PyTorch tensor
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize the image
+    ])
+
+    # Preprocess the image
+    image = transform(image).unsqueeze(0)  # Add a batch dimension
+
+    # Pass the preprocessed image through the model
+    with torch.no_grad():
+        output = model(image)
+
+    # Convert the model output to class labels
+    _, predicted = torch.max(output, 1)
+
+    return predicted.item()
+
 with st.container():
     st.image(Logo, width=800)
     st.title("Clasificador de pinturas")
@@ -231,13 +311,19 @@ with st.container():
 with st.container():
     st.subheader(f":blue[Demo]")
     uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
+    print(uploaded_file)
+    print(type(uploaded_file))
     if uploaded_file is not None:
-        # To read file as bytes:
-        bytes_data = uploaded_file.getvalue()
-        st.write("Uploaded Image:")
+    # Display the uploaded image
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
 
-        # To display the uploaded image:
-        st.image(bytes_data)
-
-        if st.button('Click Me'):
-            st.write('The button was clicked!')
+    # Predict label for the uploaded image
+        if st.button("Predict"):
+            predicted_label_artist = predict_label(image, model_artist)
+            predicted_label_style = predict_label(image, model_style)
+            predicted_label_genre = predict_label(image, model_genre)
+            st.write("Predicted label:", predicted_label_artist)
+            st.write("Predicted artist label:", all_labels['artist'][predicted_label_artist])
+            st.write("Predicted style label:", all_labels['style'][predicted_label_style])
+            st.write("Predicted genre label:", all_labels['genre'][predicted_label_genre])
