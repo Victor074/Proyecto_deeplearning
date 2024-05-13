@@ -1,19 +1,15 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from skimage import io
 import torch
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
 import torchvision.models as models
 import numpy as np
 from PIL import Image
 #import io
 import torch.nn as nn
 
-sns.set_theme(style = "darkgrid" )
 #Lectura de la Imagen
 
 Logo = io.imread("./Pictures/monet.jpg")
