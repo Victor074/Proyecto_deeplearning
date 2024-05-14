@@ -300,10 +300,14 @@ with st.container():
 with st.container():
     st.subheader(f":blue[Como arreglar el desbalance?]")
     st.write("SMOTE")
-
 with st.container():
+    st.subheader(f":blue[Dataset]")
+with st.container():
+    st.subheader(f":blue[Codigo]")
     st.subheader(f":blue[Arquitectura para {histo_selected}]")
     st.image(plots[histo_selected][1], width=800)
+
+
 with st.container():
     st.subheader(f":blue[Demo]")
     uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
@@ -319,7 +323,12 @@ with st.container():
             predicted_label_artist = predict_label(image, model_artist)
             predicted_label_style = predict_label(image, model_style)
             predicted_label_genre = predict_label(image, model_genre)
-            st.write("Predicted label:", predicted_label_artist)
             st.write("Predicted artist label:", all_labels['artist'][predicted_label_artist])
             st.write("Predicted style label:", all_labels['style'][predicted_label_style])
             st.write("Predicted genre label:", all_labels['genre'][predicted_label_genre])
+with st.container():
+    st.subheader(f":blue[Results]")
+    st.write("Style label (129 labels): 54.12")
+    st.write("Genre label (129 labels): 65.31")
+    st.write("Artist label (129 labels): 35.83")
+    
